@@ -132,8 +132,9 @@ node_modules/
 ##  Author
 **Yashwant Ray** 
 
-##  All rights are reserved
-**Yashwant Ray ans RayCrop** 
+---
+© 2026 Yashwant Ray & RayCrop. All rights reserved.
+---
 
 ---
 

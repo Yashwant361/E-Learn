@@ -2,58 +2,81 @@ import jwt from "jsonwebtoken";
 import { User } from "../models/user.js";
 import bcrypt from 'bcrypt'
 import sendMail from "../middleware/sendmail.js";
+import tryCatch from "../middleware/tryCatch.js";
 
-export const register = async (req, res) => {
-    try {
+export const register = tryCatch(async (req, res) => {
 
-        const { email, name, password } = req.body
+    const { email, name, password } = req.body
 
+    let user = await User.findOne({ email })
 
-        let user = await User.findOne({ email })
+    if (user) {
+        return res.status(400)
+            .json({ message: 'User Already exists' })
+    }
+    const hashPassword = await bcrypt.hash(password, 10)
 
-        if (user) {
-            return res.status(400)
-                .json({ message: 'User Already exists' })
+    user = {
+        name,
+        email,
+        password: hashPassword
+    }
+
+    const otp = Math.floor(Math.random() * 1000000)
+
+    const activationToken = await jwt.sign({
+        user,
+        otp
+    }, process.env.Activation_Secret,
+        {
+            expiresIn: '5m'
         }
-        const hashPassword = await bcrypt.hash(password, 10)
+    );
 
-        user = {
-            name,
-            email,
-            password: hashPassword
-        }
+    const data = {
+        name, otp
+    }
 
-        const otp = Math.floor(Math.random() * 1000000)
+    await sendMail(
+        email,
+        "E learning",
+        data
+    )
 
-        const activationToken = await jwt.sign({
-            user,
-            otp
-        }, process.env.Activation_Secret,
-            {
-                expiresIn: '5m'
-            }
-        );
+    res.status(200).json({
+        message: 'OTP send to your email succesfully',
+        activationToken
+    })
 
-        const data = {
-            name, otp
-        }
+})
 
-        await sendMail(
-            email,
-            "E learning",
-            data
-        )
+export const verifyUser = tryCatch(async (req, res) => {
+    const { otp, activationToken } = req.body
 
-        res.status(200).json({
-            message: 'OTP send to your email succesfully',
-            activationToken,
+    const verify = jwt.verify(activationToken, process.env.Activation_Secret)
+
+    if (!verify)
+        return res.status(400).json({
+            message: 'OTP Expired'
         })
 
+    if (verify.otp !== otp)
+        return res.status(400).json({
+            message: 'Wrong OTP '
+        })
 
-    } catch (error) {
-        console.log('ERROR =>' + error);
-        res.status(500)
-            .json({ message: 'ERROR FROM SERVER =>' + error.message })
+    await User.create({
+        name: verify.user.name,
+        email: verify.user.email,
+        password: verify.user.password,
+    })
 
-    }
-}
+    res.status(200).
+        json({
+            message: 'User Registered Succesfully'
+        }
+
+        )
+
+})
+

@@ -13,13 +13,18 @@ app.get('/',(req,res)=>{
     res.end()
 })
 
+app.use("/uploads",express.static("upload"))
 
 //importing routes
 import userRoutes from './routes/user.js'
+import courseRoute from './routes/course.js'
+import admin from './routes/admin.js'
 
 
 //using routes
 app.use('/api',userRoutes)
+app.use('/api',courseRoute)
+app.use('/api',admin)
 
 
 const port = process.env.PORT || 5000
